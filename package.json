@@ -1,0 +1,13 @@
+{
+  "name": "stocksense-monorepo",
+  "version": "1.0.0",
+  "description": "StockSense - Modular Inventory Management System (Odoo Architecture)",
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install"
+  },
+  "keywords": ["odoo", "inventory", "ims", "mern"],
+  "author": "",
+  "license": "ISC"
+}
