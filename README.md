@@ -1,351 +1,532 @@
-# 📦 StockSense — Modular Inventory Management System
-> **Odoo-Inspired Double-Entry Inventory Ledger & Warehouse Management Engine**
+<div align="center">
 
-[![MERN Stack](https://img.shields.io/badge/Stack-MERN%20(React%2019%20%2B%20Node%20%2B%20Mongo)-blue?style=for-the-badge)](https://github.com)
-[![Vite](https://img.shields.io/badge/Bundler-Vite%208-purple?style=for-the-badge)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS%20v4-38bdf8?style=for-the-badge)](https://tailwindcss.com/)
-[![License](https://img.shields.io/badge/License-ISC-green?style=for-the-badge)](LICENSE)
+# 📦 StockSense — Enterprise Inventory Engine
+### *Next-Generation Odoo-Inspired Double-Entry Inventory Ledger & Warehouse Management System*
+
+[![MERN Stack](https://img.shields.io/badge/Stack-MERN%20(React%2019%20%7C%20Node%20%7C%20Express%20%7C%20MongoDB)-007acc?style=for-the-badge&logo=react&logoColor=61dafb)](https://github.com/aspirant-22/StockSense_OdooHack)
+[![Vite](https://img.shields.io/badge/Bundler-Vite%208-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS%20v4-38bdf8?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Database](https://img.shields.io/badge/Database-MongoDB%208.0-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![License](https://img.shields.io/badge/License-ISC-brightgreen?style=for-the-badge)](LICENSE)
+
+<p align="center">
+  <a href="#-key-features">Key Features</a> •
+  <a href="#-architecture--mechanics">Architecture</a> •
+  <a href="#-database-design--ledger-rules">Database Design</a> •
+  <a href="#-getting-started">Getting Started</a> •
+  <a href="#-api-documentation">API Reference</a> •
+  <a href="#-demo-scenarios">Demo Scenarios</a>
+</p>
+
+</div>
 
 ---
 
-## 🌟 Executive Summary
-
-**StockSense** is an enterprise-grade Inventory Management System (IMS) inspired by the core architectural philosophy of **Odoo Inventory**. Rather than simply incrementing or decrementing arbitrary stock numbers, StockSense treats physical and virtual inventory movements as **double-entry transactions**: stock never appears or disappears out of thin air—it only moves from a **Source Location** to a **Destination Location**.
-
-Whether receiving raw materials from vendors, routing components between internal production racks, dispatching delivery orders to customers, or reconciling physical count discrepancies, StockSense guarantees **total auditability**, **zero stock loss**, and **real-time quant synchronization**.
+## 📑 Table of Contents
+1. [🌟 Executive Overview](#-executive-overview)
+2. [📐 Core Architecture & Odoo-Style Mechanics](#-architecture--mechanics)
+   - [The Double-Entry Inventory Principle](#the-double-entry-inventory-principle)
+   - [Location Classification Matrix](#location-classification-matrix)
+   - [State Lifecycle Workflow](#state-lifecycle-workflow)
+3. [✨ Key Features & Modules](#-key-features)
+4. [🛠️ Technology Stack](#️-technology-stack)
+5. [🗄️ Database Schema & Compound Indexing](#️-database-schema--compound-indexing)
+6. [📂 Repository Structure](#-repository-structure)
+7. [🚀 Quick Start & Installation](#-getting-started)
+   - [Prerequisites](#prerequisites)
+   - [Installation Steps](#step-by-step-installation)
+   - [Environment Configuration](#environment-variables)
+   - [Database Seeding & Test Credentials](#database-seeding--demo-accounts)
+   - [Running the Application](#running-the-development-servers)
+8. [📡 REST API Reference](#-api-documentation)
+9. [🧪 End-to-End Walkthrough & Test Scenarios](#-demo-scenarios)
+10. [🛡️ Reliability & Data Integrity Guarantees](#️-reliability--data-integrity-guarantees)
+11. [🔮 Roadmap](#-roadmap)
+12. [🤝 Contributing & License](#-contributing--license)
 
 ---
 
-## 📐 Core Architecture & Odoo-Style Mechanics
+## 🌟 Executive Overview
+
+Traditional inventory management tools operate on crude, destructive database updates (e.g., executing `quantity = quantity - 5`). This approach creates phantom inventory, introduces race conditions, and eliminates historical accountability.
+
+**StockSense** solves this by implementing the battle-tested **Double-Entry Inventory Engine** pioneered by **Odoo**. 
+
+### 💡 The Core Philosophy:
+> **"Stock is never created or destroyed; it is only transferred from a Source Location to a Destination Location."**
+
+Every inventory action—receiving purchase orders, staging materials, fulfilling customer sales, or adjusting for warehouse shrinkage—is tracked as an **immutable, double-entry stock movement record**.
 
 ```
-                  ┌──────────────────────────────────────────────┐
-                  │             StockSense Engine                │
-                  └──────────────────────┬───────────────────────┘
-                                         │
-                 ┌───────────────────────┴───────────────────────┐
-                 │                                               │
-                 ▼                                               ▼
-   ┌───────────────────────────┐                   ┌───────────────────────────┐
-   │     Source Location       │                   │   Destination Location    │
-   │  (Supplier/Internal/Loss) │                   │  (Internal/Customer/Loss) │
-   └─────────────┬─────────────┘                   └─────────────┬─────────────┘
-                 │                                               │
-                 │   [ - Quantity if Internal ]                  │   [ + Quantity if Internal ]
-                 └───────────────────────┬───────────────────────┘
-                                         │
-                                         ▼
-                      ┌─────────────────────────────────────┐
-                      │  Immutable Stock Move Audit Ledger  │
-                      │  (Product, SKU, Qty, Ref, User, Ts) │
-                      └─────────────────────────────────────┘
+                           ┌──────────────────────────────────────────────┐
+                           │            STOCKSENSE CORE ENGINE            │
+                           └──────────────────────┬───────────────────────┘
+                                                  │
+                 ┌────────────────────────────────┴────────────────────────────────┐
+                 ▼                                                                 ▼
+   ┌───────────────────────────┐                                     ┌───────────────────────────┐
+   │      SOURCE LOCATION      │                                     │   DESTINATION LOCATION    │
+   │ (Vendor / Internal / Loss)│                                     │ (Internal / Customer/Loss)│
+   └─────────────┬─────────────┘                                     └─────────────┬─────────────┘
+                 │                                                                 │
+                 │   [ - Quantity if Internal ]                                    │   [ + Quantity if Internal ]
+                 └────────────────────────────────┬────────────────────────────────┘
+                                                  │
+                                                  ▼
+                               ┌─────────────────────────────────────┐
+                               │   IMMUTABLE AUDIT STOCK MOVE ROW    │
+                               │  (SKU, Qty, Ref, User, Timestamps)  │
+                               └─────────────────────────────────────┘
 ```
 
-### 1. Double-Entry Stock Movement Ledger
-Every stock event generates an immutable `StockMove` record tracking:
-* **Source Location (`srcLocationId`)**
-* **Destination Location (`destLocationId`)**
-* **Product & SKU**
-* **Quantity & Unit of Measure (UOM)**
-* **User Attribution & Timestamps**
+---
 
-### 2. Location Types & Quant Resolution
-* **Physical / Internal Locations (`internal`)**: Actual storage points (e.g., `WH/Stock`, `WH/Production-A`). Stock quantities (`StockQuant`) are tracked with unique indexes `(productId, locationId)`.
-* **Virtual Partner Locations (`supplier`, `customer`)**: Conceptual origins for vendor receipts and final destinations for customer shipments.
-* **Virtual Inventory Loss Locations (`inventory_loss`)**: Reconciles physical stock adjustments (spoilage, damage, physical audit differences).
+## 📐 Architecture & Mechanics
 
-| Operation Type | Source Location | Destination Location | Physical Quant Impact |
+### The Double-Entry Inventory Principle
+
+In StockSense, inventory balances are represented as **Stock Quants** (`StockQuant`), uniquely mapped to a specific `(Product, Location)` coordinate. When a transaction is validated:
+1. **Source Internal Location**: Balance is verified for sufficient on-hand availability and atomically decremented (`-$inc`).
+2. **Destination Internal Location**: Balance is atomically incremented (`+$inc`).
+3. **Virtual Locations** (Vendors, Customers, Scrap/Loss): Act as conceptual sinks/sources, ensuring balanced ledgers without constraining real stock calculations.
+4. **Audit Ledger**: A permanent, unmodifiable `StockMove` log entry is appended with user attribution, timestamp, and transaction reference.
+
+---
+
+### Location Classification Matrix
+
+| Operation Category | Source Location Type | Destination Location Type | Physical Quant Effect |
 | :--- | :--- | :--- | :--- |
-| **Incoming Receipt** | `Partner Locations/Vendors` | `WH/Stock` | + Increases destination quant |
-| **Delivery Order** | `WH/Stock` | `Partner Locations/Customers` | - Decreases source quant (validated) |
-| **Internal Transfer** | `WH/Stock` | `WH/Production-A` | - Decreases source / + Increases destination |
-| **Adjustment (Gain)** | `Virtual Locations/Loss` | `WH/Stock` | + Increases destination quant |
-| **Adjustment (Loss)** | `WH/Stock` | `Virtual Locations/Loss` | - Decreases source quant |
+| **Incoming Receipt** | Virtual Vendor (`supplier`) | Physical Internal (`internal`) | `+` Increases destination location quant |
+| **Delivery Order** | Physical Internal (`internal`) | Virtual Customer (`customer`) | `-` Decreases source location quant (Availability strictly validated) |
+| **Internal Transfer** | Physical Internal (`internal`) | Physical Internal (`internal`) | `-` Decreases source quant / `+` Increases destination quant |
+| **Stock Adjustment (Gain)** | Virtual Loss/Gain (`inventory_loss`) | Physical Internal (`internal`) | `+` Increases destination quant |
+| **Stock Adjustment (Loss)** | Physical Internal (`internal`) | Virtual Loss/Gain (`inventory_loss`) | `-` Decreases source quant |
 
 ---
 
-## ✨ Key Features & Capabilities
+### State Lifecycle Workflow
+
+Every stock operation moves through an explicit, auditable state machine:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft: Create Operation
+    Draft --> Waiting: Mark as To-Do (Reserve Intent)
+    Waiting --> Ready: Check Availability (Stock Verified)
+    Ready --> Done: Validate (Execute Double-Entry Moves)
+    Waiting --> Cancelled: Cancel Operation
+    Draft --> Cancelled: Cancel Operation
+    Ready --> Cancelled: Cancel Operation
+    Done --> [*]: Immutable (Audit Trail Locked)
+```
+
+1. **Draft**: Initial configuration; items, quantities, and locations can be modified freely.
+2. **Waiting (To Do)**: Operational intent confirmed; queued for warehouse staff.
+3. **Ready (Assigned)**: Real-time stock verification confirms all requested SKUs are available in source racks.
+4. **Done (Validated)**: Stock moves execute atomically; quants update, and ledger entries lock permanently.
+5. **Cancelled**: Transaction is aborted with no impact on physical stock.
+
+---
+
+## ✨ Key Features
 
 ### 📊 1. Real-Time Operational Dashboard
-* **Dynamic KPI Cards**: Total tracked SKUs, Low Stock warnings, Pending Receipts, Pending Delivery Orders, and Internal Transfers.
-* **Warehouse Filtering**: Instantly isolate metrics by individual warehouse facility or across the entire company.
-* **Quick-Launch Operations**: 1-click shortcuts to initiate Receipts, Deliveries, Transfers, or Stock Adjustments.
+- **KPI Metrics Cards**: Total active SKUs, Low Stock alerts, Pending Receipts, Pending Deliveries, and Internal Transfers.
+- **Warehouse Isolation Filter**: Dynamically filter operational metrics by individual warehouse or view corporate-wide rollups.
+- **Quick Action Triggers**: 1-click launchers for initiating Receipts, Deliveries, Transfers, and Physical Count Adjustments.
 
-### 📥 2. Incoming Receipts (Procurement & Inward Logistics)
-* Manage purchase deliveries from external vendors into internal warehouse storage.
-* Automated sequential reference generation (e.g., `IN/2026/0001`).
-* Step-by-step lifecycle management (`Draft` ➔ `Ready` ➔ `Done`).
-* Validation checks ensure products and quantities are accurately received and quants updated.
+### 📥 2. Incoming Receipts (Procurement & Inbound Logistics)
+- Create vendor receipts with automated sequential reference numbering (e.g., `IN/2026/0001`).
+- Multi-line SKU batching with automatic unit-of-measure synchronization.
+- Real-time quant increases upon warehouse manager validation.
 
-### 📤 3. Delivery Orders (Outward Dispatch & Fulfillment)
-* Fulfill customer orders directly from specified warehouse storage locations.
-* **Stock Availability Checks**: Real-time validation prevents dispatching items when quantities are insufficient.
-* Generates dispatch references (e.g., `OUT/2026/0001`).
+### 📤 3. Delivery Orders (Outbound Dispatch & Fulfillment)
+- Fulfill customer purchase orders with built-in **Stock Availability Checks**.
+- Prevents stockouts by blocking dispatches when internal source locations lack sufficient on-hand quantities.
+- Generates outbound tracking references (e.g., `OUT/2026/0001`).
 
 ### 🔄 4. Internal Warehouse Transfers
-* Shift inventory between racks, zones, or distinct warehouse branches (e.g., `WH/Stock` ➔ `WH/Production Rack A`).
-* Full traceability for internal logistics and manufacturing workflows.
+- Seamlessly route goods between aisles, racks, production zones, or distinct physical warehouse facilities (e.g., `WH/Stock` ➔ `WH/Production-A`).
+- Maintains continuous chain of custody across all internal logistics steps.
 
-### ⚖️ 5. Inventory Adjustments & Count Reconciliation
-* Audit physical stock counts against theoretical system ledger quantities.
-* Calculate variance deltas and automatically post compensating stock moves to the virtual inventory loss location.
+### ⚖️ 5. Inventory Adjustments & Physical Count Reconciliation
+- Audit physical warehouse counts against system ledger figures.
+- Automatically calculates variance deltas and generates compensating double-entry moves against virtual loss locations.
 
-### 📜 6. Immutable Stock Move Ledger
-* Comprehensive audit trail for every single item transfer.
-* Searchable and filterable by SKU, reference number, operation type, or date.
-* Complete traceability of who moved what, when, and between which exact locations.
+### 📜 6. Immutable Double-Entry Stock Move Ledger
+- Complete searchable and filterable history of every inventory transaction.
+- Trace exact SKU, quantity, source node, destination node, user attribution, and execution timestamp.
 
 ### 🏷️ 7. Product Catalog & Automated Reordering Alerts
-* SKU categorization, barcode tagging, unit of measure (Units, Kg, Box, Liters).
-* Configurable **Minimum Stock Thresholds** triggering warning badges and replenishment suggestions.
+- Comprehensive SKU management: Categorization, Barcodes, Cost/Sale Pricing, and custom UOMs (Units, Kg, Box, Liters).
+- Configurable **Minimum/Maximum Reorder Thresholds** triggering dynamic low-stock status badges.
 
-### 🏢 8. Multi-Warehouse & Location Management
-* Configure multiple physical warehouses with unique codes and addresses.
-* Subdivide warehouses into granular storage nodes and racks.
+### 🏢 8. Multi-Warehouse & Hierarchical Location Tree
+- Multi-facility configuration with dedicated warehouse codes and physical addresses.
+- Unlimited sub-location nesting (Warehouse ➔ Stock ➔ Aisle ➔ Shelf/Rack).
 
-### 🔐 9. Role-Based Access Control & Security
-* Dual-tier authentication: **Warehouse Manager** and **Warehouse Operator (Staff)**.
-* JSON Web Token (JWT) based session management with protected Express middlewares.
-* Zod schema validation on incoming payloads.
-* Password reset flow with integrated OTP support.
+### 🔐 9. Dual-Tier Role-Based Access Control (RBAC) & Security
+- Granular permissions for **Inventory Lead (Manager)** and **Warehouse Operator (Staff)**.
+- JWT-based authentication with protected Express middleware.
+- Secure password reset workflow with OTP email integration.
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Layer | Technologies |
-| :--- | :--- |
-| **Frontend** | React 19, Vite 8, Tailwind CSS v4, Lucide React, Axios, Clsx, Tailwind Merge |
-| **Backend** | Node.js, Express.js 4, Mongoose 8 (MongoDB ODM), Zod 3, JWT, Bcrypt.js, Nodemailer |
-| **Database** | MongoDB (NoSQL document store with compound indexing for Quants & Movements) |
-| **Architecture Pattern** | Modular Double-Entry Stock Ledger, Service Layer Pattern, RESTful API |
+<div align="center">
+
+| Layer | Technologies | Description |
+| :--- | :--- | :--- |
+| **Frontend UI** | **React 19**, **Vite 8** | High-performance SPA with modern React hooks & fast HMR |
+| **Styling & Icons** | **Tailwind CSS v4**, **Lucide React** | Responsive, modern dark/light glassmorphic interface |
+| **Backend Runtime** | **Node.js 18+**, **Express.js 4** | Robust REST API server with structured MVC + Service layer |
+| **Database & ODM** | **MongoDB 8.0**, **Mongoose 8** | High-throughput document store with compound indexes |
+| **Validation & Security** | **Zod 3**, **JWT**, **Bcrypt.js** | Strict schema validation, password hashing, stateless tokens |
+| **Email Service** | **Nodemailer** | Transporter for OTP password recovery and system alerts |
+
+</div>
 
 ---
 
-## 📂 Project Structure
+## 🗄️ Database Schema & Compound Indexing
+
+StockSense optimizes query performance and enforces absolute consistency through MongoDB compound indexing:
+
+```mermaid
+erDiagram
+    WAREHOUSE ||--o{ LOCATION : contains
+    LOCATION ||--o{ STOCK_QUANT : stores
+    PRODUCT ||--o{ STOCK_QUANT : tracks
+    PRODUCT_CATEGORY ||--o{ PRODUCT : categorizes
+    STOCK_OPERATION ||--o{ STOCK_MOVE : generates
+    USER ||--o{ STOCK_OPERATION : creates
+    USER ||--o{ STOCK_MOVE : executes
+
+    WAREHOUSE {
+        string name
+        string code PK
+        string address
+    }
+    LOCATION {
+        string name
+        string completeName
+        string type "internal | supplier | customer | inventory_loss"
+        boolean isVirtual
+        ObjectId warehouseId FK
+    }
+    PRODUCT {
+        string name
+        string sku PK
+        string barcode
+        string uom
+        number minStock
+        number maxStock
+        ObjectId categoryId FK
+    }
+    STOCK_QUANT {
+        ObjectId productId FK
+        ObjectId locationId FK
+        ObjectId warehouseId FK
+        number quantity "Unique compound index (productId, locationId)"
+    }
+    STOCK_OPERATION {
+        string name "Reference (IN/2026/0001)"
+        string type "receipt | delivery | internal | adjustment"
+        string status "draft | waiting | ready | done | cancel"
+        ObjectId srcLocationId FK
+        ObjectId destLocationId FK
+    }
+    STOCK_MOVE {
+        string reference
+        ObjectId productId FK
+        number quantity
+        string status "done"
+        Date dateDone
+    }
+```
+
+> **⚡ Performance Note:** The `StockQuant` collection enforces a unique compound index on `{ productId: 1, locationId: 1 }`. This guarantees that each SKU has exactly one authoritative inventory counter per location, eliminating duplicate records and race conditions.
+
+---
+
+## 📂 Repository Structure
 
 ```
 StockSense/
 ├── backend/
 │   ├── config/
-│   │   └── db.js                 # MongoDB connection logic
+│   │   └── db.js                 # MongoDB connection & pool configuration
 │   ├── controllers/
-│   │   ├── auth.controller.js       # User auth, login, OTP recovery
-│   │   ├── dashboard.controller.js  # Aggregated metrics & operational counts
-│   │   ├── operation.controller.js  # Receipts, Deliveries, Transfers, Adjustments
-│   │   ├── product.controller.js    # SKU management & reorder levels
-│   │   └── warehouse.controller.js  # Multi-warehouse and location nodes
+│   │   ├── auth.controller.js       # User signup, login, OTP recovery
+│   │   ├── dashboard.controller.js  # Analytics, low stock & KPI counts
+│   │   ├── operation.controller.js  # Multi-state operations & movements
+│   │   ├── product.controller.js    # SKU catalog, categories, reorder rules
+│   │   └── warehouse.controller.js  # Facilities & hierarchical location trees
 │   ├── middleware/
-│   │   ├── auth.middleware.js       # JWT extraction & role validation
-│   │   ├── error.middleware.js      # Global error handling middleware
-│   │   └── validate.middleware.js   # Zod request schema validation
+│   │   ├── auth.middleware.js       # JWT extraction & role authorization
+│   │   ├── error.middleware.js      # Global error formatters & 404 handler
+│   │   └── validate.middleware.js   # Zod request validation wrapper
 │   ├── models/
-│   │   ├── Location.js              # Physical (internal) & Virtual locations
-│   │   ├── Product.js               # SKU catalog, UOM, reorder thresholds
-│   │   ├── ProductCategory.js       # Taxonomy / product grouping
+│   │   ├── Location.js              # Physical & virtual inventory nodes
+│   │   ├── Product.js               # SKU catalog, pricing, reorder rules
+│   │   ├── ProductCategory.js       # Product taxonomy
 │   │   ├── StockMove.js             # Immutable movement ledger
-│   │   ├── StockOperation.js        # High-level operations header & lines
-│   │   ├── StockQuant.js            # Real-time location stock balances
-│   │   ├── User.js                  # System users & access roles
-│   │   └── Warehouse.js             # Physical facilities
-│   ├── routes/                      # Express route definitions
+│   │   ├── StockOperation.js        # High-level operation headers & line items
+│   │   ├── StockQuant.js            # Real-time on-hand location balances
+│   │   ├── User.js                  # Authentication & RBAC profiles
+│   │   └── Warehouse.js             # Multi-warehouse facilities
+│   ├── routes/
+│   │   ├── auth.routes.js           # /api/auth
+│   │   ├── dashboard.routes.js      # /api/dashboard
+│   │   ├── operation.routes.js      # /api/operations
+│   │   ├── product.routes.js        # /api/products
+│   │   └── warehouse.routes.js      # /api/warehouses
 │   ├── services/
-│   │   ├── email.service.js         # Nodemailer OTP email transporter
-│   │   └── stock.service.js         # Core double-entry stock execution engine
-│   ├── validators/                  # Zod validation schemas
-│   ├── seeder.js                    # Database seeder with sample data
-│   ├── server.js                    # Express application entry point
+│   │   ├── email.service.js         # Nodemailer transporter & OTP dispatch
+│   │   └── stock.service.js         # Double-entry ledger execution engine
+│   ├── validators/                  # Zod input verification schemas
+│   ├── seeder.js                    # Database seeder with enterprise demo data
+│   ├── server.js                    # Express app initialization
 │   ├── package.json
 │   └── .env.example
 │
 ├── frontend/
-│   ├── public/                      # Static assets & favicon
+│   ├── public/                      # Static brand assets
 │   ├── src/
 │   │   ├── api/
-│   │   │   └── axiosClient.js       # Pre-configured Axios instance with JWT interceptor
+│   │   │   └── axiosClient.js       # Axios instance with JWT interceptors
 │   │   ├── components/
-│   │   │   ├── forms/               # Modal dialogs & operation entry forms
-│   │   │   └── layout/              # Sidebar, Topbar, navigation shells
+│   │   │   ├── forms/               # Operation creation & modal forms
+│   │   │   └── layout/              # Responsive Sidebar, Topbar & Navigation
 │   │   ├── context/
-│   │   │   └── AuthContext.jsx      # Global user auth & session provider
+│   │   │   └── AuthContext.jsx      # Global user session provider
 │   │   ├── pages/
-│   │   │   ├── auth/                # Sign In, Sign Up, Password Recovery
+│   │   │   ├── auth/                # Sign In, Sign Up, Forgot/Reset Password
 │   │   │   ├── dashboard/           # Metrics cards, warehouse filter, quick actions
-│   │   │   ├── ledger/              # Stock move audit trail table
+│   │   │   ├── ledger/              # Stock move audit trail view
 │   │   │   ├── operations/          # Receipts, Deliveries, Transfers, Adjustments
 │   │   │   ├── products/            # SKU catalog, low-stock alerts, reorder rules
 │   │   │   └── settings/            # Warehouses & location tree management
-│   │   ├── App.jsx                  # Root view router & layout orchestrator
-│   │   ├── index.css                # Tailwind CSS root imports
-│   │   └── main.jsx                 # React DOM mount point
+│   │   ├── App.jsx                  # Main view router & shell orchestrator
+│   │   ├── index.css                # Tailwind CSS v4 design system
+│   │   └── main.jsx                 # React root renderer
 │   ├── index.html
 │   ├── package.json
 │   └── vite.config.js
 │
-├── package.json                     # Root monorepo script runner
+├── package.json                     # Monorepo task automation scripts
 └── README.md
 ```
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Quick Start & Installation
 
 ### Prerequisites
+Before running the application, ensure you have the following installed:
 * **Node.js**: `v18.0.0` or higher
 * **npm**: `v9.0.0` or higher
-* **MongoDB**: Local instance running at `mongodb://127.0.0.1:27017` or MongoDB Atlas URI
+* **MongoDB**: A local instance running on `mongodb://127.0.0.1:27017` or a [MongoDB Atlas](https://www.mongodb.com/atlas) cluster URI.
 
 ---
 
-### Step 1: Installation
+### Step-by-Step Installation
 
-Clone the repository and install all dependencies for both backend and frontend using the root helper script:
-
+#### 1. Clone Repository
 ```bash
-# Clone the repository
 git clone https://github.com/aspirant-22/StockSense_OdooHack.git
 cd StockSense
+```
 
-# Install root, backend, and frontend dependencies in one command
+#### 2. Install Dependencies
+Install all root, backend, and frontend packages with a single command:
+```bash
 npm run install:all
 ```
 
-Alternatively, install dependencies manually:
-```bash
-# Install backend
-cd backend && npm install
-
-# Install frontend
-cd ../frontend && npm install
-```
+*(Alternatively, run `npm install` inside both `backend/` and `frontend/` folders).*
 
 ---
 
-### Step 2: Environment Configuration
+### Environment Variables
 
-Create a `.env` file in the `backend/` directory based on `.env.example`:
-
+Create your `.env` configuration in the `backend/` directory:
 ```bash
 cd backend
 cp .env.example .env
 ```
 
-Edit `backend/.env` with your configuration:
-```env
-PORT=5000
-MONGO_URI=mongodb://127.0.0.1:27017/stocksense
-JWT_SECRET=your_jwt_secret_key_here
-CLIENT_URL=http://localhost:5173
+Configure the following variables in `backend/.env`:
 
-# Optional: Real SMTP credentials for password reset emails
-# SMTP_SERVICE=gmail
-# SMTP_USER=your_email@gmail.com
-# SMTP_PASS=your_16_char_google_app_password
-```
+| Key | Description | Default Value |
+| :--- | :--- | :--- |
+| `PORT` | Backend Express server port | `5000` |
+| `MONGO_URI` | MongoDB connection connection string | `mongodb://127.0.0.1:27017/stocksense` |
+| `JWT_SECRET` | Secret key for signing JSON Web Tokens | `your_jwt_secret_key_here` |
+| `CLIENT_URL` | Frontend origin for CORS policy | `http://localhost:5173` |
+| `SMTP_SERVICE` | *(Optional)* Nodemailer service (e.g., `gmail`) | `gmail` |
+| `SMTP_USER` | *(Optional)* Email address for sending OTPs | `your_email@gmail.com` |
+| `SMTP_PASS` | *(Optional)* App Password for email account | `your_app_password` |
 
 ---
 
-### Step 3: Seed Default Demonstration Data
+### Database Seeding & Demo Accounts
 
-Populate the database with sample warehouses, locations, categories, SKUs, initial stock quants, and test user accounts:
+Populate the database with pre-configured warehouses, locations, product categories, SKU items with stock balances, and test accounts:
 
 ```bash
 cd backend
 node seeder.js
 ```
 
-#### 🔑 Pre-Configured Demo Accounts:
-| Role | Email | Password | Permissions |
+#### 🔑 Pre-Configured Demo Credentials:
+| Account Role | Email Address | Password | Permissions |
 | :--- | :--- | :--- | :--- |
-| **Inventory Lead (Manager)** | `admin@stocksense.io` | `password123` | Full access (Warehouses, SKUs, Operations, Adjustments) |
-| **Warehouse Operator (Staff)** | `staff@stocksense.io` | `password123` | Operational access (Receipts, Deliveries, Transfers) |
+| **Inventory Lead (Manager)** | `admin@stocksense.io` | `password123` | **Full Access**: Facilities, SKUs, Reordering, Operations, Stock Adjustments, User Management |
+| **Warehouse Operator (Staff)** | `staff@stocksense.io` | `password123` | **Operational Access**: Processing Receipts, Picking Deliveries, Executing Internal Transfers |
 
 ---
 
-### Step 4: Run the Application
+### Running the Development Servers
 
-You can launch both services concurrently from the root directory or in separate terminals:
+Run both servers using the root automation scripts:
 
-#### Option A: Root Monorepo Scripts
 ```bash
-# Terminal 1: Backend Server (runs on http://localhost:5000)
+# Start Backend API Server (http://localhost:5000)
 npm run dev:backend
 
-# Terminal 2: Frontend Client (runs on http://localhost:5173)
+# Start Frontend Client (in a separate terminal) (http://localhost:5173)
 npm run dev:frontend
 ```
 
-#### Option B: Individual Folders
-```bash
-# Run Backend
-cd backend
-npm run dev
-
-# Run Frontend (in a separate terminal)
-cd frontend
-npm run dev
-```
-
-Visit **`http://localhost:5173`** in your browser and log in with the demo credentials.
+Open your browser and navigate to **`http://localhost:5173`**.
 
 ---
 
-## 📡 API Reference Overview
+## 📡 REST API Reference
 
-### Authentication (`/api/auth`)
-* `POST /api/auth/register` — Register a new user account
-* `POST /api/auth/login` — Authenticate and retrieve JWT Bearer token
-* `POST /api/auth/forgot-password` — Generate and email OTP password recovery code
-* `POST /api/auth/reset-password` — Verify OTP and set a new password
-* `GET /api/auth/me` — Retrieve current authenticated session info *(Protected)*
+All protected endpoints require the HTTP Authorization header: `Authorization: Bearer <JWT_TOKEN>`.
 
-### Operations & Stock Moves (`/api/operations`)
-* `GET /api/operations` — List stock operations (filtered by `type`, `status`, `warehouseId`)
-* `POST /api/operations` — Create a new operation (Receipt, Delivery, Transfer)
-* `GET /api/operations/:id` — Retrieve full operation details with item lines
-* `POST /api/operations/:id/validate` — Validate and execute operation stock moves
-* `POST /api/operations/:id/cancel` — Cancel a pending or draft operation
-* `GET /api/operations/ledger/moves` — Retrieve immutable double-entry stock move audit log
-* `POST /api/operations/adjust` — Direct physical count adjustment execution
-
-### Products & Categories (`/api/products`)
-* `GET /api/products` — List all products with current on-hand quantities & stock alerts
-* `POST /api/products` — Create a new product SKU
-* `GET /api/products/:id` — Retrieve product details with location quant breakdown
-* `PUT /api/products/:id` — Update product metadata & reorder threshold rules
-* `DELETE /api/products/:id` — Remove a product record
-* `GET /api/products/categories` — List all product categories
-
-### Warehouses & Locations (`/api/warehouses`)
-* `GET /api/warehouses` — List all warehouses with attached storage locations
-* `POST /api/warehouses` — Create a new warehouse facility
-* `GET /api/warehouses/locations` — Retrieve all storage location nodes (Internal & Virtual)
-* `POST /api/warehouses/locations` — Create a new internal location / shelf
-
-### Dashboard (`/api/dashboard`)
-* `GET /api/dashboard/metrics` — Aggregate operational counters, low-stock warnings, and recent activity
+### 🔐 Authentication (`/api/auth`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Public | Register a new user account |
+| `POST` | `/api/auth/login` | Public | Authenticate credentials & receive JWT token |
+| `POST` | `/api/auth/forgot-password` | Public | Generate and send a 6-digit OTP to user's email |
+| `POST` | `/api/auth/reset-password` | Public | Verify OTP and set a new password |
+| `GET` | `/api/auth/me` | Protected | Retrieve authenticated user profile |
 
 ---
 
-## 🛡️ Validation & Reliability
-
-* **Transactional Integrity**: Location stock deduction only occurs upon stock availability confirmation; negative balances are prevented on internal storage locations.
-* **Compound Database Indexing**: `StockQuant` uses `{ productId: 1, locationId: 1 }` unique compound index to ensure one authoritative record per location per product.
-* **Strict Payload Validation**: All inbound JSON requests are verified using **Zod** schemas before reaching controller logic.
+### 📦 Operations & Moves (`/api/operations`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/operations` | Protected | List operations with filtering (`type`, `status`, `warehouseId`) |
+| `POST` | `/api/operations` | Protected | Create a new operation (Receipt, Delivery, Internal Transfer) |
+| `GET` | `/api/operations/:id` | Protected | Get detailed operation view with line items |
+| `POST` | `/api/operations/:id/mark-todo` | Protected | Transition operation state from `draft` ➔ `waiting` |
+| `POST` | `/api/operations/:id/check-availability`| Protected | Verify stock on internal source location (`waiting` ➔ `ready`) |
+| `POST` | `/api/operations/:id/force-draft` | Protected | Revert an unvalidated operation back to `draft` |
+| `POST` | `/api/operations/:id/validate` | Protected | **Execute double-entry move**: Update quants & mark `done` |
+| `POST` | `/api/operations/:id/cancel` | Protected | Cancel a pending operation |
+| `POST` | `/api/operations/adjust` | Manager | Reconcile physical count discrepancy against virtual loss |
+| `GET` | `/api/operations/ledger/moves` | Protected | Fetch immutable double-entry stock move audit ledger |
 
 ---
 
-## 🤝 Contributing
+### 🏷️ Products & Catalog (`/api/products`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/products` | Protected | List all products with aggregate on-hand stock and alert badges |
+| `POST` | `/api/products` | Manager | Create a new product SKU |
+| `GET` | `/api/products/:id` | Protected | Get product details with location quant breakdown |
+| `PUT` | `/api/products/:id` | Manager | Update product metadata and reorder thresholds |
+| `DELETE` | `/api/products/:id` | Manager | Remove a product SKU |
+| `GET` | `/api/products/categories` | Protected | List all product categories |
+| `POST` | `/api/products/categories` | Manager | Create a new product category |
 
-Contributions, issues, and feature requests are welcome!
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
+---
+
+### 🏢 Warehouses & Locations (`/api/warehouses`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/warehouses` | Protected | List all warehouses with attached storage locations |
+| `POST` | `/api/warehouses` | Manager | Create a new warehouse facility |
+| `GET` | `/api/warehouses/locations` | Protected | Retrieve all internal and virtual location nodes |
+| `POST` | `/api/warehouses/locations` | Manager | Create a new storage location / rack / aisle |
+
+---
+
+### 📈 Dashboard Analytics (`/api/dashboard`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/dashboard/metrics` | Protected | Fetch real-time KPI counts, low-stock warnings, and recent activity |
+
+---
+
+## 🧪 Demo Scenarios
+
+Test the core features with these step-by-step walkthroughs:
+
+### Scenario 1: Receiving Inbound Inventory (Vendor ➔ WH/Stock)
+1. Sign in as **`admin@stocksense.io`** / `password123`.
+2. Navigate to **Operations ➔ Receipts** and click **+ New Receipt**.
+3. Source is automatically set to `Partner Locations/Vendors`; select `WH/Stock` as Destination.
+4. Add line items (e.g., *Steel Rods* — `50 Units`) and click **Create Receipt**.
+5. Click **Mark as To Do**, then click **Validate**.
+6. Check **Products Catalog**: The on-hand count for *Steel Rods* will immediately reflect the +50 increase.
+7. Check the **Stock Ledger** to inspect the immutable move entry.
+
+---
+
+### Scenario 2: Outbound Delivery with Stock Availability Protection
+1. Go to **Operations ➔ Delivery Orders** and click **+ New Delivery**.
+2. Select Source `WH/Stock` and Destination `Partner Locations/Customers`.
+3. Select an item and enter a quantity higher than current stock.
+4. Click **Check Availability** ➔ System warns of insufficient inventory.
+5. Adjust quantity to an available amount, click **Check Availability** ➔ State changes to `Ready`.
+6. Click **Validate** ➔ Stock is deducted from `WH/Stock`, customer delivery completes, and ledger is recorded.
+
+---
+
+### Scenario 3: Physical Inventory Count Reconciliation
+1. Navigate to **Operations ➔ Adjustments**.
+2. Select Product (e.g., *Industrial Bearings*), Warehouse `WH`, and Location `WH/Stock`.
+3. If physical count is `18` while theoretical ledger says `20`: Enter `18` and provide reason *"Minor floor damage"*.
+4. Click **Apply Adjustment**.
+5. StockSense automatically creates a balancing stock move of `2 Units` from `WH/Stock` ➔ `Virtual Locations/Inventory Loss`.
+
+---
+
+## 🛡️ Reliability & Data Integrity Guarantees
+
+- **No Arbitrary Modifications**: Physical stock quants cannot be directly edited via ad-hoc queries. All changes must originate from a validated `StockOperation` or `StockAdjustment`.
+- **Zero Negative Inventory on Internal Locations**: Validation barriers ensure stock deductions are blocked if available quant is lower than the requested quantity.
+- **Strict Zod Payload Validation**: Inbound HTTP requests are filtered through rigorous schemas before reaching controllers, eliminating malformed or malicious payloads.
+- **Stateless JWT Security with Role Guards**: Endpoints enforce role checks (`manager` vs `staff`), securing administrative endpoints while enabling staff operational workflows.
+
+---
+
+## 🔮 Roadmap
+
+- [ ] **Barcode / QR Scanner Integration**: Mobile-friendly camera scanner for instant SKU lookup and rapid picking.
+- [ ] **Automated Valuation Methods**: Support for FIFO, LIFO, and AVCO (Average Costing) real-time inventory valuation.
+- [ ] **CSV / Excel Bulk Import & Export**: One-click import for master product catalogs and export for audit reports.
+- [ ] **Automated Reordering Purchase Orders**: Automatic draft receipt generation when stock drops below configured minimum thresholds.
+- [ ] **Batch Picking & Wave Dispatch**: Grouping multiple delivery orders for optimal warehouse routing.
+
+---
+
+## 🤝 Contributing & License
+
+Contributions, bug reports, and feature requests are welcome!
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'feat: Add AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
----
-
-## 📄 License
-
-This project is licensed under the ISC License.
+This project is licensed under the **ISC License**. Built with ❤️ for high-precision supply chain management.
