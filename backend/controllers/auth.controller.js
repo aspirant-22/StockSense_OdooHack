@@ -71,6 +71,8 @@ const loginUser = async (req, res, next) => {
   }
 };
 
+const sendEmail = require('../services/email.service');
+
 // @desc    Request OTP for password reset
 // @route   POST /api/auth/forgot-password
 // @access  Public
@@ -90,13 +92,30 @@ const forgotPassword = async (req, res, next) => {
     user.resetPasswordExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
     await user.save({ validateBeforeSave: false });
 
-    // In a production app, send via nodemailer / Twilio. Here we log and return for testability.
-    console.log(`[AUTH] Password Reset OTP for ${email}: ${otp}`);
+    console.log(`[AUTH] Password Reset OTP generated for ${email}: ${otp}`);
+
+    // Send formatted email via Nodemailer
+    const emailResult = await sendEmail({
+      to: email,
+      subject: 'StockSense Security: Your Password Reset OTP Code',
+      text: `Your StockSense password reset OTP is: ${otp}. It is valid for 10 minutes.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 16px;">
+          <h2 style="color: #c084fc; margin-bottom: 8px;">StockSense IMS Security</h2>
+          <p style="color: #94a3b8; font-size: 14px;">You requested a password reset for your account (<strong>${email}</strong>).</p>
+          <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; text-align: center; margin: 20px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #2dd4bf; font-family: monospace;">${otp}</span>
+          </div>
+          <p style="color: #94a3b8; font-size: 12px;">This OTP is valid for <strong>10 minutes</strong>. If you did not request this, please ignore this email.</p>
+        </div>
+      `,
+    });
 
     res.json({
       success: true,
-      message: 'OTP has been generated and sent (valid for 10 minutes)',
-      otpPlaceholder: otp, // Returned for effortless demo/testing flow
+      message: `OTP has been sent to ${email}`,
+      otpPlaceholder: otp, // Also returned for instant UI convenience
+      emailPreviewUrl: emailResult.previewUrl || null,
     });
   } catch (error) {
     next(error);

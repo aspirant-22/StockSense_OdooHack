@@ -22,6 +22,7 @@ export const AuthModal = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [demoOtp, setDemoOtp] = useState('');
+  const [previewUrl, setPreviewUrl] = useState('');
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -51,7 +52,9 @@ export const AuthModal = () => {
       setSuccessMsg(res.data.message);
       if (res.data.otpPlaceholder) {
         setDemoOtp(res.data.otpPlaceholder);
-        setOtp(res.data.otpPlaceholder);
+      }
+      if (res.data.emailPreviewUrl) {
+        setPreviewUrl(res.data.emailPreviewUrl);
       }
       setStep('otp');
     } catch (err) {
@@ -143,21 +146,34 @@ export const AuthModal = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-purple-600 to-teal-600 hover:from-purple-500 hover:to-teal-500 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-lg shadow-purple-600/20 disabled:opacity-50"
+                  className="w-full bg-gradient-to-r from-purple-600 to-teal-600 hover:from-purple-500 hover:to-teal-500 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-lg shadow-purple-600/20 disabled:opacity-50 cursor-pointer"
                 >
-                  {loading ? 'Sending OTP...' : 'Send OTP'}
+                  {loading ? 'Sending OTP to Email...' : 'Send OTP to Email'}
                 </button>
               </form>
             ) : (
               <form onSubmit={handleResetPassword} className="space-y-4">
-                {demoOtp && (
-                  <div className="p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs">
-                    Demo OTP code: <span className="font-mono font-bold">{demoOtp}</span>
+                {previewUrl ? (
+                  <div className="p-3 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-300 text-xs flex flex-col gap-1.5">
+                    <span className="font-semibold">✉️ Real Email Dispatched to Inbox:</span>
+                    <a
+                      href={previewUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-teal-400 hover:text-teal-200 underline font-mono break-all"
+                    >
+                      Click here to view delivered email preview &rarr;
+                    </a>
                   </div>
-                )}
+                ) : demoOtp ? (
+                  <div className="p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs">
+                    Generated OTP Code: <span className="font-mono font-bold">{demoOtp}</span>
+                  </div>
+                ) : null}
+
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                    6-Digit OTP
+                    Enter 6-Digit OTP Received
                   </label>
                   <input
                     type="text"
