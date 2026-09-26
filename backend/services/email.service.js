@@ -2,7 +2,28 @@ const nodemailer = require('nodemailer');
 
 const sendEmail = async ({ to, subject, html, text }) => {
   try {
-    // If SMTP credentials are provided in env, use them
+    // If Gmail Service or custom SMTP credentials are provided in env, use them
+    if (process.env.SMTP_SERVICE === 'gmail' && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: `"StockSense Security" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+        to,
+        subject,
+        text,
+        html,
+      });
+
+      console.log(`[REAL GMAIL SENT to ${to}] MessageId: ${info.messageId}`);
+      return { success: true, messageId: info.messageId, isReal: true };
+    }
+
     if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
@@ -22,8 +43,8 @@ const sendEmail = async ({ to, subject, html, text }) => {
         html,
       });
 
-      console.log(`[EMAIL] Sent to ${to} (MessageId: ${info.messageId})`);
-      return { success: true, messageId: info.messageId };
+      console.log(`[SMTP EMAIL SENT to ${to}] MessageId: ${info.messageId}`);
+      return { success: true, messageId: info.messageId, isReal: true };
     }
 
     // Default: Generate Ethereal test inbox for instant preview without requiring external credentials
