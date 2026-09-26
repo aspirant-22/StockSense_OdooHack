@@ -1,122 +1,186 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthModal } from './pages/auth/AuthModal';
+import { Sidebar } from './components/layout/Sidebar';
+import { Topbar } from './components/layout/Topbar';
+import { DashboardView } from './pages/dashboard/DashboardView';
+import { ProductsView } from './pages/products/ProductsView';
+import { OperationsView } from './pages/operations/OperationsView';
+import { AdjustmentsView } from './pages/operations/AdjustmentsView';
+import { LedgerView } from './pages/ledger/LedgerView';
+import { WarehousesView } from './pages/settings/WarehousesView';
+import { AdjustmentModal } from './components/forms/AdjustmentModal';
+import api from './api/axiosClient';
 
-function App() {
-  const [count, setCount] = useState(0)
+function MainApp() {
+  const { user, loading } = useAuth();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [warehouses, setWarehouses] = useState([]);
+  const [selectedWarehouse, setSelectedWarehouse] = useState('');
+
+  // Global adjustment modal
+  const [adjustmentProduct, setAdjustmentProduct] = useState(null);
+  const [toastMessage, setToastMessage] = useState('');
+
+  useEffect(() => {
+    const loadWarehouses = async () => {
+      try {
+        const res = await api.get('/warehouses');
+        if (res.data.success) {
+          setWarehouses(res.data.data);
+        }
+      } catch (err) {
+        console.error('Failed to load global warehouses', err);
+      }
+    };
+    if (user) {
+      loadWarehouses();
+    }
+  }, [user]);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 4000);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthModal />;
+  }
+
+  const getPageMeta = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return { title: 'Operational Dashboard', subtitle: 'Overview of stock metrics & movement ledger' };
+      case 'products':
+        return { title: 'Products & Reordering Rules', subtitle: 'Manage SKUs, locations & alert thresholds' };
+      case 'receipts':
+        return { title: 'Incoming Receipts', subtitle: 'Vendor deliveries into Main Stock' };
+      case 'deliveries':
+        return { title: 'Delivery Orders', subtitle: 'Customer shipments and order dispatch' };
+      case 'transfers':
+        return { title: 'Internal Transfers', subtitle: 'Warehouse floor and rack-to-rack stock shifts' };
+      case 'adjustments':
+        return { title: 'Inventory Adjustments', subtitle: 'Physical count mismatch reconciliations' };
+      case 'ledger':
+        return { title: 'Stock Move History Ledger', subtitle: 'Immutable double-entry audit timeline' };
+      case 'warehouses':
+        return { title: 'Warehouses & Locations', subtitle: 'Manage nodes and storage locations' };
+      default:
+        return { title: 'StockSense IMS', subtitle: '' };
+    }
+  };
+
+  const meta = getPageMeta();
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
+      {/* Sidebar Navigation */}
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <div className="ticks"></div>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        <Topbar
+          title={meta.title}
+          subtitle={meta.subtitle}
+          warehouses={warehouses}
+          selectedWarehouse={selectedWarehouse}
+          onWarehouseChange={setSelectedWarehouse}
+        />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        {/* Dynamic Page Views */}
+        <main className="flex-1 overflow-y-auto custom-scrollbar">
+          {activeTab === 'dashboard' && (
+            <DashboardView
+              selectedWarehouse={selectedWarehouse}
+              setActiveTab={setActiveTab}
+              openNewOperationModal={(type) => {
+                if (type === 'receipt') setActiveTab('receipts');
+                else if (type === 'delivery') setActiveTab('deliveries');
+                else if (type === 'internal') setActiveTab('transfers');
+                else if (type === 'adjustment') setActiveTab('adjustments');
+              }}
+            />
+          )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+          {activeTab === 'products' && (
+            <ProductsView
+              selectedWarehouse={selectedWarehouse}
+              openAdjustmentModal={(p) => setAdjustmentProduct(p)}
+            />
+          )}
+
+          {activeTab === 'receipts' && (
+            <OperationsView
+              type="receipt"
+              title="Receipts (Incoming Stock)"
+              subtitle="Receive products from vendors into internal warehouse storage"
+              selectedWarehouse={selectedWarehouse}
+            />
+          )}
+
+          {activeTab === 'deliveries' && (
+            <OperationsView
+              type="delivery"
+              title="Delivery Orders (Outgoing Goods)"
+              subtitle="Pick, pack, and validate customer shipments from stock"
+              selectedWarehouse={selectedWarehouse}
+            />
+          )}
+
+          {activeTab === 'transfers' && (
+            <OperationsView
+              type="internal"
+              title="Internal Transfers"
+              subtitle="Relocate stock between internal locations, racks, or warehouses"
+              selectedWarehouse={selectedWarehouse}
+            />
+          )}
+
+          {activeTab === 'adjustments' && (
+            <AdjustmentsView
+              selectedWarehouse={selectedWarehouse}
+              openAdjustmentModal={(p) => setAdjustmentProduct(p)}
+            />
+          )}
+
+          {activeTab === 'ledger' && <LedgerView selectedWarehouse={selectedWarehouse} />}
+
+          {activeTab === 'warehouses' && <WarehousesView />}
+        </main>
+      </div>
+
+      {/* Global Stock Adjustment Modal */}
+      {adjustmentProduct && (
+        <AdjustmentModal
+          product={adjustmentProduct}
+          warehouses={warehouses}
+          onClose={() => setAdjustmentProduct(null)}
+          onSuccess={(msg) => showToast(msg)}
+        />
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 bg-slate-900 border border-emerald-500/40 text-emerald-300 px-5 py-3 rounded-2xl shadow-2xl backdrop-blur-xl text-sm font-medium z-50 animate-bounce">
+          {toastMessage}
+        </div>
+      )}
+    </div>
+  );
 }
 
-export default App
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
+  );
+}
