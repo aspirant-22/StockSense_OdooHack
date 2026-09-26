@@ -5,10 +5,23 @@ const Location = require('../models/Location');
 const Product = require('../models/Product');
 const StockEngineService = require('../services/stock.service');
 
+const Warehouse = require('../models/Warehouse');
+
 // Helper to generate sequential Odoo references
-const generateSequence = (type) => {
+const generateSequence = async (type, warehouseId) => {
+  if (type === 'receipt') {
+    let whCode = 'WH';
+    if (warehouseId) {
+      const wh = await Warehouse.findById(warehouseId);
+      if (wh && wh.code) whCode = wh.code;
+    }
+    // Count existing receipts for this warehouse to produce true auto-increment sequential format (e.g. WH/IN/00001)
+    const count = await StockOperation.countDocuments({ type: 'receipt', warehouseId });
+    const nextSeq = String(count + 1).padStart(5, '0');
+    return `${whCode}/IN/${nextSeq}`;
+  }
+
   const prefixMap = {
-    receipt: 'IN',
     delivery: 'OUT',
     internal: 'INT',
     adjustment: 'ADJ',
@@ -73,7 +86,7 @@ const getOperationById = async (req, res, next) => {
   }
 };
 
-// @desc    Create a new Stock Operation (Draft / Ready state)
+// @desc    Create a new Stock Operation (Draft state for receipts, ready for direct internal transfers)
 // @route   POST /api/operations
 // @access  Private
 const createOperation = async (req, res, next) => {
@@ -87,9 +100,10 @@ const createOperation = async (req, res, next) => {
       scheduledDate,
       items,
       notes,
+      status: requestedStatus,
     } = req.body;
 
-    const reference = generateSequence(type);
+    const reference = await generateSequence(type, warehouseId);
 
     // Populate item details with snapshot names
     const populatedItems = await Promise.all(
@@ -107,6 +121,9 @@ const createOperation = async (req, res, next) => {
       })
     );
 
+    // Receipts default to 'draft' state as per Odoo lifecycle; others default to 'ready'
+    const defaultStatus = type === 'receipt' ? 'draft' : 'ready';
+
     const operation = await StockOperation.create({
       reference,
       type,
@@ -115,13 +132,35 @@ const createOperation = async (req, res, next) => {
       srcLocationId,
       destLocationId,
       scheduledDate: scheduledDate || new Date(),
-      status: 'ready', // Default to Ready for immediate validation workflow
+      status: requestedStatus || defaultStatus,
       items: populatedItems,
       notes: notes || '',
       createdBy: req.user?._id,
     });
 
     res.status(201).json({ success: true, data: operation });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Mark a draft operation as 'Ready' (To Do)
+// @route   POST /api/operations/:id/mark-todo
+// @access  Private
+const markAsTodo = async (req, res, next) => {
+  try {
+    const operation = await StockOperation.findById(req.params.id);
+    if (!operation) {
+      return res.status(404).json({ success: false, message: 'Operation not found' });
+    }
+    if (operation.status !== 'draft') {
+      return res.status(400).json({ success: false, message: 'Only draft operations can be marked as To Do' });
+    }
+
+    operation.status = 'ready';
+    await operation.save();
+
+    res.json({ success: true, message: 'Operation state updated to Ready', data: operation });
   } catch (error) {
     next(error);
   }
@@ -258,6 +297,7 @@ module.exports = {
   getOperations,
   getOperationById,
   createOperation,
+  markAsTodo,
   validateOperation,
   cancelOperation,
   adjustStockCount,

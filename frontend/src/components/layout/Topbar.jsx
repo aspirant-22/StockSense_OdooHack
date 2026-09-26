@@ -6,7 +6,7 @@ export const Topbar = ({ title, subtitle, warehouses, selectedWarehouse, onWareh
   const { user } = useAuth();
 
   return (
-    <header className="h-16 bg-slate-900/60 border-b border-slate-800 backdrop-blur-xl px-8 flex items-center justify-between sticky top-0 z-20">
+    <header className="h-16 bg-slate-900/60 border-b border-slate-800 backdrop-blur-xl px-8 flex items-center justify-between sticky top-0 z-20 print:hidden">
       {/* Title / Breadcrumb */}
       <div>
         <h2 className="text-xl font-bold text-white tracking-tight">{title}</h2>

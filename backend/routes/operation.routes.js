@@ -10,6 +10,7 @@ const {
   getOperations,
   getOperationById,
   createOperation,
+  markAsTodo,
   validateOperation,
   cancelOperation,
   adjustStockCount,
@@ -23,6 +24,7 @@ router.post('/adjust', validate(stockAdjustmentSchema), adjustStockCount);
 
 router.route('/').get(getOperations).post(validate(createOperationSchema), createOperation);
 router.route('/:id').get(getOperationById);
+router.post('/:id/mark-todo', markAsTodo);
 router.post('/:id/validate', validateOperation);
 router.post('/:id/cancel', cancelOperation);
 

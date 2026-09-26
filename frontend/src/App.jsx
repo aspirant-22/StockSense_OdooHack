@@ -6,6 +6,7 @@ import { Topbar } from './components/layout/Topbar';
 import { DashboardView } from './pages/dashboard/DashboardView';
 import { ProductsView } from './pages/products/ProductsView';
 import { OperationsView } from './pages/operations/OperationsView';
+import { ReceiptsView } from './pages/operations/ReceiptsView';
 import { AdjustmentsView } from './pages/operations/AdjustmentsView';
 import { LedgerView } from './pages/ledger/LedgerView';
 import { WarehousesView } from './pages/settings/WarehousesView';
@@ -118,12 +119,7 @@ function MainApp() {
           )}
 
           {activeTab === 'receipts' && (
-            <OperationsView
-              type="receipt"
-              title="Receipts (Incoming Stock)"
-              subtitle="Receive products from vendors into internal warehouse storage"
-              selectedWarehouse={selectedWarehouse}
-            />
+            <ReceiptsView selectedWarehouse={selectedWarehouse} />
           )}
 
           {activeTab === 'deliveries' && (
