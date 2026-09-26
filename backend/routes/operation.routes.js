@@ -11,6 +11,8 @@ const {
   getOperationById,
   createOperation,
   markAsTodo,
+  checkAvailability,
+  forceDraft,
   validateOperation,
   cancelOperation,
   adjustStockCount,
@@ -25,6 +27,8 @@ router.post('/adjust', validate(stockAdjustmentSchema), adjustStockCount);
 router.route('/').get(getOperations).post(validate(createOperationSchema), createOperation);
 router.route('/:id').get(getOperationById);
 router.post('/:id/mark-todo', markAsTodo);
+router.post('/:id/check-availability', checkAvailability);
+router.post('/:id/force-draft', forceDraft);
 router.post('/:id/validate', validateOperation);
 router.post('/:id/cancel', cancelOperation);
 

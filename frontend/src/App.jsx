@@ -7,6 +7,7 @@ import { DashboardView } from './pages/dashboard/DashboardView';
 import { ProductsView } from './pages/products/ProductsView';
 import { OperationsView } from './pages/operations/OperationsView';
 import { ReceiptsView } from './pages/operations/ReceiptsView';
+import { DeliveriesView } from './pages/operations/DeliveriesView';
 import { AdjustmentsView } from './pages/operations/AdjustmentsView';
 import { LedgerView } from './pages/ledger/LedgerView';
 import { WarehousesView } from './pages/settings/WarehousesView';
@@ -123,12 +124,7 @@ function MainApp() {
           )}
 
           {activeTab === 'deliveries' && (
-            <OperationsView
-              type="delivery"
-              title="Delivery Orders (Outgoing Goods)"
-              subtitle="Pick, pack, and validate customer shipments from stock"
-              selectedWarehouse={selectedWarehouse}
-            />
+            <DeliveriesView selectedWarehouse={selectedWarehouse} />
           )}
 
           {activeTab === 'transfers' && (

@@ -9,20 +9,25 @@ const Warehouse = require('../models/Warehouse');
 
 // Helper to generate sequential Odoo references
 const generateSequence = async (type, warehouseId) => {
+  let whCode = 'WH';
+  if (warehouseId) {
+    const wh = await Warehouse.findById(warehouseId);
+    if (wh && wh.code) whCode = wh.code;
+  }
+
   if (type === 'receipt') {
-    let whCode = 'WH';
-    if (warehouseId) {
-      const wh = await Warehouse.findById(warehouseId);
-      if (wh && wh.code) whCode = wh.code;
-    }
-    // Count existing receipts for this warehouse to produce true auto-increment sequential format (e.g. WH/IN/00001)
     const count = await StockOperation.countDocuments({ type: 'receipt', warehouseId });
     const nextSeq = String(count + 1).padStart(5, '0');
     return `${whCode}/IN/${nextSeq}`;
   }
 
+  if (type === 'delivery') {
+    const count = await StockOperation.countDocuments({ type: 'delivery', warehouseId });
+    const nextSeq = String(count + 1).padStart(5, '0');
+    return `${whCode}/OUT/${nextSeq}`;
+  }
+
   const prefixMap = {
-    delivery: 'OUT',
     internal: 'INT',
     adjustment: 'ADJ',
   };
@@ -121,8 +126,8 @@ const createOperation = async (req, res, next) => {
       })
     );
 
-    // Receipts default to 'draft' state as per Odoo lifecycle; others default to 'ready'
-    const defaultStatus = type === 'receipt' ? 'draft' : 'ready';
+    // Receipts and Deliveries default to 'draft' state as per Odoo lifecycle; others default to 'ready'
+    let defaultStatus = ['receipt', 'delivery'].includes(type) ? 'draft' : 'ready';
 
     const operation = await StockOperation.create({
       reference,
@@ -161,6 +166,85 @@ const markAsTodo = async (req, res, next) => {
     await operation.save();
 
     res.json({ success: true, message: 'Operation state updated to Ready', data: operation });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Check Stock Availability for Delivery Orders (Evaluates Waiting vs Ready)
+// @route   POST /api/operations/:id/check-availability
+// @access  Private
+const checkAvailability = async (req, res, next) => {
+  try {
+    const operation = await StockOperation.findById(req.params.id)
+      .populate('srcLocationId');
+
+    if (!operation) {
+      return res.status(404).json({ success: false, message: 'Operation not found' });
+    }
+
+    if (operation.status === 'done' || operation.status === 'canceled') {
+      return res.status(400).json({ success: false, message: `Cannot check availability for ${operation.status} operation` });
+    }
+
+    // Check availability against StockQuant for each item in source location
+    let allAvailable = true;
+    const availabilityDetails = [];
+
+    for (const item of operation.items) {
+      const quant = await StockQuant.findOne({
+        productId: item.productId,
+        locationId: operation.srcLocationId._id,
+      });
+
+      const availableQty = quant ? quant.quantity : 0;
+      const isShortage = availableQty < item.demandQty;
+
+      if (isShortage) {
+        allAvailable = false;
+      }
+
+      availabilityDetails.push({
+        productId: item.productId,
+        productName: item.productName,
+        sku: item.sku,
+        demanded: item.demandQty,
+        available: availableQty,
+        isAvailable: !isShortage,
+      });
+    }
+
+    operation.status = allAvailable ? 'ready' : 'waiting';
+    await operation.save();
+
+    res.json({
+      success: true,
+      message: allAvailable
+        ? 'Products available. Delivery order is READY to pick & pack.'
+        : 'Insufficient stock in warehouse. Delivery marked as WAITING.',
+      data: operation,
+      availabilityDetails,
+      allAvailable,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Force a Waiting Delivery back to Draft
+// @route   POST /api/operations/:id/force-draft
+// @access  Private
+const forceDraft = async (req, res, next) => {
+  try {
+    const operation = await StockOperation.findById(req.params.id);
+    if (!operation) {
+      return res.status(404).json({ success: false, message: 'Operation not found' });
+    }
+
+    operation.status = 'draft';
+    await operation.save();
+
+    res.json({ success: true, message: 'Operation reset to Draft', data: operation });
   } catch (error) {
     next(error);
   }
@@ -298,6 +382,8 @@ module.exports = {
   getOperationById,
   createOperation,
   markAsTodo,
+  checkAvailability,
+  forceDraft,
   validateOperation,
   cancelOperation,
   adjustStockCount,
